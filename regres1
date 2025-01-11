@@ -1,0 +1,55 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
+from joblib import dump, load
+
+df = pd.read_csv('Billionaires Statistics Dataset.csv')
+
+if 'finalWorth' not in df.columns:
+    raise ValueError("'finalWorth' column is missing from the dataset.")
+
+age_median = df['age'].median()
+df['age'] = df['age'].fillna(age_median)
+
+columns_to_drop = ['rank', 'personName', 'city', 'gender', 'birthDate',
+                   'lastName', 'firstName', 'birthYear', 'birthMonth', 'birthDay',
+                   'population_country', 'total_tax_rate_country', 
+                   'tax_revenue_country_country', 'life_expectancy_country',
+                   'gross_primary_education_enrollment_country',
+                   'gross_tertiary_education_enrollment', 'gdp_country', 
+                   'latitude_country', 'cpi_change_country', 'longitude_country',
+                   'state', 'date', 'title', 'selfMade', 'status',
+                   'cpi_country', 'countryOfCitizenship', 'residenceStateRegion', 
+                   'organization']
+
+df.drop(columns_to_drop, axis=1, inplace=True)
+
+label_encoder = LabelEncoder()
+for col in df.select_dtypes(include=['object']).columns:
+    df[col] = label_encoder.fit_transform(df[col])
+
+target_column = 'finalWorth'
+features_columns = list(set(df.columns) - set([target_column]))
+
+X = df[features_columns]
+y = df[target_column]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+
+mape = mean_absolute_percentage_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+
+print(f'Mean Absolute Percentage Error (MAPE): {mape:.2f}%')
+print(f'Mean Squared Error (MSE): {mse:.2f}')
+
+dumped_model = dump(model, 'linear_regression.joblib')
+loaded_model = load('linear_regression.joblib')
+predicted_y = loaded_model.predict(X_test)
+predicted_acc = loaded_model.score(X_test, predicted_y)
